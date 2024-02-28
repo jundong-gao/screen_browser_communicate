@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        html,body{margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; position: relative;}
+        .box{width: 250px; background-size: 100% 100%; position: absolute; height: 350px; top: 0; left: 0; background-color: #ccc;}
+    </style>
+</head>
+<body>
+    <div class="box" draggable="false"></div>
+
+    <script>
+
+        function init() {
+            let imgs = {
+                'q': './imgs/q.jpg',
+                'k': './imgs/k.jpeg',
+                'j': './imgs/j.webp'
+            }
+            let type = new URLSearchParams(window.location.search).get('card')
+            card.style.backgroundImage = `url(${imgs[type]})`
+        }
+
+
+        let card = document.querySelector('.box')
+        let startPage = [0, 0]
+        let startPoint = [0, 0]
+
+        init()
+
+
+      	// 通信通道
+        let channel = new BroadcastChannel('card')
+        
+        channel.onmessage = res => {
+            let pagepositon = screenToPage(...res.data)
+
+
+            card.setAttribute('data-left', pagepositon[0])
+            card.setAttribute('data-top', pagepositon[1])
+
+
+            card.style.left = pagepositon[0] + 'px'
+            card.style.top = pagepositon[1] + 'px'
+        }
+				
+        // 计算导航栏工具栏高度
+        function barHeight() {
+            return window.outerHeight - window.innerHeight
+        }
+
+      	// 初始化 左上角
+        channel.postMessage([window.screenX, window.screenY - barHeight()])
+
+
+        card.onmousedown = e => {
+            // let x = e.pageX - card.offsetLeft
+            // let y = e.pageX - card.offsetTop
+
+
+            let x = Number(card.getAttribute('data-left') || 0)
+            let y = Number(card.getAttribute('data-top') || 0)
+
+            startPage = [e.pageX, e.pageY]
+            startPoint = [x, y]
+
+
+            console.log('card.offsetLeft::::::::::::::::', e.pageX,card.offsetLeft)
+            window.onmousemove = e => {
+                let cx = e.pageX - startPage[0]
+                let cy = e.pageY - startPage[1]
+
+                let dataleft = cx + startPoint[0]
+                let datatop = cy + startPoint[1]
+
+                card.setAttribute('data-left', dataleft)
+                card.setAttribute('data-top', datatop)
+
+                card.style.left = dataleft + 'px'
+                card.style.top = datatop + 'px'
+
+                let screenPoints = pageToScreen(dataleft, datatop)
+                // 通信
+                channel.postMessage(screenPoints)
+            }
+
+            window.onmouseup = () => {
+                window.onmousemove = null
+                window.onmouseup = null
+            }
+        }
+
+
+				// 相对屏幕坐标 转换成 相对浏览器坐标
+        function screenToPage(x, y) {
+            let pagex = x - window.screenX
+            let pagey = y - window.screenY - barHeight()
+            return [pagex, pagey]
+        }
+
+
+      	// 相对浏览器坐标  转换成 相对屏幕坐标
+        function pageToScreen(x, y) {
+            let screen_x = window.screenX + x
+            let screen_y = window.screenY + y + barHeight()
+            return [screen_x, screen_y]
+        }
+
+
+
+
+    </script>
+
+</body>
+</html>
